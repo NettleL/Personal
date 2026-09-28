@@ -5,12 +5,12 @@ MATCH_SCORE = 1
 MISMATCH_SCORE = -1
 GAP_SCORE = -2
 
-def cell_score(residue2, residue1, Score_gh, Score_gj, Score_ih):
+def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     #where g refers to position i-1 and h refers to position j-1
     
     trace_arrow = ''
     
-    if residue2 == residue1:
+    if residue1 == residue2:
         sij = MATCH_SCORE
     else:
         sij = MISMATCH_SCORE
@@ -24,9 +24,9 @@ def cell_score(residue2, residue1, Score_gh, Score_gj, Score_ih):
     if final_cell_score == score1:
         trace_arrow += 'd'
     if final_cell_score == score2:
-        trace_arrow += 'l'
-    if final_cell_score == score3:
         trace_arrow += 'u'
+    if final_cell_score == score3:
+        trace_arrow += 'l'
   
     return final_cell_score, trace_arrow
 
@@ -37,23 +37,23 @@ def form_matrix():
     residues1 = ['gap1'] + list(sequence1)
     residues2 = ['gap2'] + list(sequence2)
         
-    df = pd.DataFrame(index = range(len(residues1)), columns = range(len(residues2))) # so index + column vals are unique
-    traceback_df = pd.DataFrame(index = range(len(residues1)), columns = range(len(residues2)))
+    df = pd.DataFrame(index = range(len(residues2)), columns = range(len(residues1))) # so index + column vals are unique
+    traceback_df = pd.DataFrame(index = range(len(residues2)), columns = range(len(residues1)))
     
     # Fill in cells
-    for j in range(len(residues2)):
+    for j in range(len(residues1)):
         if j == 0: # initialise first column
-            for i in range(len(residues1)):
+            for i in range(len(residues2)):
                 df.loc[i, j] = GAP_SCORE * i
         else:
-            for i in range(len(residues1)):
+            for i in range(len(residues2)):
                 # initialise first row
                 if i == 0:
                     df.loc[i, j] = GAP_SCORE * j
                 # fill in rest of cells
                 else:
-                    score, trace_value = cell_score(residues2[j],
-                                                    residues1[i],
+                    score, trace_value = cell_score(residues1[j],
+                                                    residues2[i],
                                                     df.loc[i-1, j-1],
                                                     df.loc[i-1, j],
                                                     df.loc[i, j-1])
@@ -73,20 +73,3 @@ def main():
     optimal_alignment = alignment_matrix.iloc[-1, -1]
 
 main()
-
-''' returns this - 
-Sequence 1: taat
-Sequence 2: tcgat
-    0   1   2   3   4    5
-0   0  -2  -4  -6  -8  -10
-1  -2   1   3   5   7    9
-2  -4   3   5   7   9   11
-3  -6   5   7   9  11   13
-4  -8   7   9  11  13   15
-     0    1    2    3    4    5
-0  NaN  NaN  NaN  NaN  NaN  NaN
-1  NaN    d    u    u    u    u
-2  NaN    l   lu   lu   lu   lu
-3  NaN    l   lu   lu   lu   lu
-4  NaN    l   lu   lu   lu   lu
-'''
