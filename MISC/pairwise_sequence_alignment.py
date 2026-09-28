@@ -16,8 +16,8 @@ def cell_score(residue2, residue1, Score_gh, Score_gj, Score_ih):
         sij = MISMATCH_SCORE
 
     score1 = Score_gh + sij
-    score2 = Score_gj - GAP_SCORE
-    score3 = Score_ih - GAP_SCORE
+    score2 = Score_gj + GAP_SCORE
+    score3 = Score_ih + GAP_SCORE
 
     final_cell_score = max(score1, score2, score3)
     
@@ -52,8 +52,8 @@ def form_matrix():
                     df.loc[i, j] = GAP_SCORE * j
                 # fill in rest of cells
                 else:
-                    score, trace_value = cell_score(residues2[i-1],
-                                                    residues1[j-1],
+                    score, trace_value = cell_score(residues2[j],
+                                                    residues1[i],
                                                     df.loc[i-1, j-1],
                                                     df.loc[i-1, j],
                                                     df.loc[i, j-1])
@@ -73,3 +73,20 @@ def main():
     optimal_alignment = alignment_matrix.iloc[-1, -1]
 
 main()
+
+''' returns this - 
+Sequence 1: taat
+Sequence 2: tcgat
+    0   1   2   3   4    5
+0   0  -2  -4  -6  -8  -10
+1  -2   1   3   5   7    9
+2  -4   3   5   7   9   11
+3  -6   5   7   9  11   13
+4  -8   7   9  11  13   15
+     0    1    2    3    4    5
+0  NaN  NaN  NaN  NaN  NaN  NaN
+1  NaN    d    u    u    u    u
+2  NaN    l   lu   lu   lu   lu
+3  NaN    l   lu   lu   lu   lu
+4  NaN    l   lu   lu   lu   lu
+'''
