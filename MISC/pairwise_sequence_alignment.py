@@ -13,7 +13,7 @@ residues2 = ['gap2'] + list(sequence2)
 df = pd.DataFrame(columns = residues1, index = residues2)
 
 def cell_score(i, j, Sgh, Sgj, Sih): #where g refers to position i-1 and h refers to position j-1
-    if i == j:
+    if residues2[i] == residues1[j]:
         sij = match_score
     else:
         sij = mismatch_score
@@ -36,5 +36,7 @@ for j in range(len(residues2)):
         for i in range(len(residues1)):
             if i == 0:
                 df.loc[residues2[i], residues1[j]] = gap_score * j
+            else:
+                df.loc[residues2[i], residues1[j]] = cell_score(i - 1, j - 1, df.loc[residues2[i-1], residues1[j-1]], df.loc[residues2[i-1], residues1[j-1]], df.loc[residues2[i], residues1[j]])
     
 print(df)
