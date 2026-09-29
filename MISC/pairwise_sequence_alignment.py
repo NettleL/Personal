@@ -34,8 +34,8 @@ def form_matrix():
     sequence1 = input("Sequence 1: ")
     sequence2 = input("Sequence 2: ")
     
-    residues1 = ['gap1'] + list(sequence1)
-    residues2 = ['gap2'] + list(sequence2)
+    residues1 = ['-'] + list(sequence1)
+    residues2 = ['-'] + list(sequence2)
         
     df = pd.DataFrame(index = range(len(residues2)), columns = range(len(residues1))) # so index + column vals are unique
     traceback_df = pd.DataFrame(index = range(len(residues2)), columns = range(len(residues1)))
@@ -99,7 +99,19 @@ def single_traceback(traceback_matrix):
     
     path = []
     
-    while i > 0 or j > 0:
+    while not (i == 0 and j == 0):
+        
+        # boundary cases - if only i or only j = 0 : need both i and j to = 0
+        if i == 0: # need to move left
+            path.append((i, j, 'l'))
+            j -= 1
+            continue
+            
+        elif j == 0: # need to move up
+            path.append((i, j, 'u'))
+            i -= 1
+            continue
+    
         arrows = traceback_matrix.iloc[i, j]
         
         arrow_used = arrows[0] # default to first arrow if arrow is not specified. do not worry!! each divergence point (i.e. each arrow) will have a pass dedicated to it!! so no divergence points will be missed, even though the first arrow is the default
@@ -112,13 +124,45 @@ def single_traceback(traceback_matrix):
             i -= 1
         elif arrow_used == 'l':
             j -= 1
-        
-    path.append((0, 0, None)) # add first cell to end of path
+    
+    path.append((i, j, None))
     
     chronological_path = path[::-1] # switches path from backwards to forwards
     
     return chronological_path
 
+def form_alignment(residues1, residues2, unique_final_paths):
+    alignments = []
+    for path in unique_final_paths:
+        i = 0
+        j = 0
+        alignment1 = ''
+        alignment2 = ''
+        movement_list = []
+        residue_count_1 = 1
+        residue_count_2 = 1
+                
+        for step in path:
+            movement = step[2]
+            movement_list.append(movement)
+            
+        for step in movement_list:
+            if step == 'd':
+                alignment1 += residues1[residue_count_1]
+                alignment2 += residues2[residue_count_2]
+                residue_count_1 += 1
+                residue_count_2 += 1
+            if step == 'u':
+                alignment1 += '-'
+                alignment2 += residues2[residue_count_2]
+                residue_count_2 += 1
+            if step == 'l':
+                alignment1 += residues1[residue_count_1]
+                alignment2 += '-'
+                residue_count_1 += 1
+        alignments.append((alignment1, alignment2))
+    return(alignments)
+        
 def main():
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix()
     
@@ -126,7 +170,18 @@ def main():
     print(traceback_matrix)
     
     optimal_alignment = alignment_matrix.iloc[-1, -1]
+    print("Optimal Alignment Score =", optimal_alignment)
+    traceback = total_traceback(traceback_matrix)
     
-    print(total_traceback(traceback_matrix))
+    alignments = form_alignment(residues1, residues2, traceback)
+    
+    print(alignments)
+    
+    for alignment in alignments:
+        print('ALIGNMENT')
+        for sequence in alignment:
+            print(sequence)
+        
+
 
 main()
