@@ -162,25 +162,45 @@ def form_alignment(residues1, residues2, unique_final_paths):
                 residue_count_1 += 1
         alignments.append((alignment1, alignment2))
     return(alignments)
+
+def alignment_viewer(alignments):
+    all_visualised_alignments = []
+    for alignment in alignments:
+        alignment1 = alignment[0]
+        alignment2 = alignment[1]
+        middle_row = ''
+        for count in range(len(alignment1)): # for each position in the alignment
+            if alignment1[count] == '-' or alignment2[count] == '-':
+                middle_row += ' '
+            else:
+                middle_row += '|'
+        visualised_alignment = "\n".join([alignment1, middle_row, alignment2])
+        all_visualised_alignments.append(visualised_alignment)
+    return all_visualised_alignments
         
 def main():
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix()
-    
-    print(alignment_matrix)
-    print(traceback_matrix)
-    
     optimal_alignment = alignment_matrix.iloc[-1, -1]
-    print("Optimal Alignment Score =", optimal_alignment)
-    traceback = total_traceback(traceback_matrix)
     
+    print('')
+    print('ALIGNMENT MATRIX')
+    print(alignment_matrix)
+    print("Optimal Alignment Score =", optimal_alignment)
+    print('')
+    print('TRACEBACK MATRIX')
+    print(traceback_matrix)
+    print('')
+    
+    
+    
+    traceback = total_traceback(traceback_matrix)
     alignments = form_alignment(residues1, residues2, traceback)
     
-    print(alignments)
+    visualised_alignments = alignment_viewer(alignments)
     
-    for alignment in alignments:
+    for alignment in visualised_alignments:
         print('ALIGNMENT')
-        for sequence in alignment:
-            print(sequence)
+        print(alignment)
         
 
 
