@@ -82,7 +82,16 @@ def total_traceback(traceback_matrix):
             path = single_traceback(matrix_copy)
             final_paths.append(path)
             
-    return final_paths
+    unique_final_paths = []
+    paths_added_to_unique_final_paths = [] # because paths are tuples weird things happen :((
+    
+    for path in final_paths:
+        tupled_path = tuple(path)
+        if tupled_path not in paths_added_to_unique_final_paths:
+            unique_final_paths.append(path)
+            paths_added_to_unique_final_paths.append(tupled_path)
+    
+    return unique_final_paths
     
 def single_traceback(traceback_matrix):
     i = traceback_matrix.shape[0] - 1
@@ -91,7 +100,7 @@ def single_traceback(traceback_matrix):
     path = []
     
     while i > 0 or j > 0:
-        arrows = traceback_matrix.iloc[i][j]
+        arrows = traceback_matrix.iloc[i, j]
         
         arrow_used = arrows[0] # default to first arrow if arrow is not specified. do not worry!! each divergence point (i.e. each arrow) will have a pass dedicated to it!! so no divergence points will be missed, even though the first arrow is the default
         
