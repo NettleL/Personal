@@ -1,5 +1,10 @@
 import pandas as pd
 
+# AESTHETICS
+from colorama import Fore
+import matplotlib.pyplot as plt
+import numpy as np
+
 # constants - maybe later add the ability for the user to change these constants??
 MATCH_SCORE = 1
 MISMATCH_SCORE = -1
@@ -172,11 +177,29 @@ def alignment_viewer(alignments):
         for count in range(len(alignment1)): # for each position in the alignment
             if alignment1[count] == '-' or alignment2[count] == '-':
                 middle_row += ' '
-            else:
+            elif alignment1[count] == alignment2[count]: # FOR AESTHETIC
                 middle_row += '|'
+            else:
+                middle_row += Fore.RED + '|' + Fore.RESET
         visualised_alignment = "\n".join([alignment1, middle_row, alignment2])
         all_visualised_alignments.append(visualised_alignment)
     return all_visualised_alignments
+
+# FOR AESTHETIC
+def alignment_plot(alignment_matrix, paths):
+    alignment_numpy = alignment_matrix.to_numpy(dtype=float)
+    plt.matshow(alignment_numpy)
+    
+    
+    for path in paths:
+        x = []
+        y = []
+        for step in path:
+            x.append(step[1]) # to match matrix coordinates - x = j (columns) and y = i (rows)
+            y.append(step[0])
+        plt.plot(x, y, 'k')
+    plt.show()
+    
         
 def main():
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix()
@@ -201,6 +224,9 @@ def main():
     for alignment in visualised_alignments:
         print('ALIGNMENT')
         print(alignment)
+        
+    print('')
+    alignment_plot(alignment_matrix, traceback)
         
 
 
