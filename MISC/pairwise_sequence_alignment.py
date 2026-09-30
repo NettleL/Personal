@@ -223,8 +223,8 @@ def main():
     for alignment in visualised_alignments:
         print('ALIGNMENT')
         print(alignment)
-        
-    print('')
+        print('')
+
     alignment_plot(alignment_matrix, traceback)
         
 
