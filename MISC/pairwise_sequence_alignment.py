@@ -190,7 +190,6 @@ def alignment_plot(alignment_matrix, paths):
     alignment_numpy = alignment_matrix.to_numpy(dtype=float)
     plt.matshow(alignment_numpy)
     
-    
     for path in paths:
         x = []
         y = []
