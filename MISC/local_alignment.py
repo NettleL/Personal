@@ -24,14 +24,17 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     score2 = Score_gj + GAP_SCORE
     score3 = Score_ih + GAP_SCORE
 
-    final_cell_score = max(score1, score2, score3)
+    final_cell_score = max(0, score1, score2, score3)
     
-    if final_cell_score == score1:
-        trace_arrow += 'd'
-    if final_cell_score == score2:
-        trace_arrow += 'u'
-    if final_cell_score == score3:
-        trace_arrow += 'l'
+    if final_cell_score == 0:
+        trace_arrow = 'zero'
+    else:
+        if final_cell_score == score1:
+            trace_arrow += 'd'
+        if final_cell_score == score2:
+            trace_arrow += 'u'
+        if final_cell_score == score3:
+            trace_arrow += 'l'
   
     return final_cell_score, trace_arrow
 
@@ -49,12 +52,12 @@ def form_matrix():
     for j in range(len(residues1)):
         if j == 0: # initialise first column
             for i in range(len(residues2)):
-                df.loc[i, j] = GAP_SCORE * i
+                df.loc[i, j] = 0 # smith-waterman - initialise to 0
         else:
             for i in range(len(residues2)):
                 # initialise first row
                 if i == 0:
-                    df.loc[i, j] = GAP_SCORE * j
+                    df.loc[i, j] = 0 # smith-waterman - initialise to 0
                 # fill in rest of cells
                 else:
                     score, trace_value = cell_score(residues1[j],
@@ -66,13 +69,21 @@ def form_matrix():
                     traceback_df.loc[i, j] = trace_value
     return residues1, residues2, df, traceback_df
 
-
-def total_traceback(traceback_matrix):
+def total_traceback(alignment_matrix, traceback_matrix):
+    max_positions = [] # to start traceback from
+    
     # note - will never be dead ends when you traceback (i think) so don't worry about that
     divergence_points = []
     
     # dont use dictionary for storing tracebacks
     final_paths = []
+    
+    max_value = alignment_matrix.values.max()
+    for i in alignment_matrix.index:
+        for j in alignment_matrix.columns:
+            if alignment_matrix.iloc[i, j] == max_value:
+                max_positions.append((i, j))
+    print('column, row = ', max_positions)
     
     # make list of divergence points
     for i in range(traceback_matrix.shape[0]): # rows
@@ -80,12 +91,13 @@ def total_traceback(traceback_matrix):
             if traceback_matrix.iloc[i, j] in ['du', 'dl', 'ul', 'dul']:
                 divergence_points.append((i, j))
     
-    for i, j in divergence_points:
-        for arrow in traceback_matrix.iloc[i,j]:
-            matrix_copy = traceback_matrix.copy()
-            matrix_copy.iloc[i, j] = arrow
-            path = single_traceback(matrix_copy)
-            final_paths.append(path)
+    for max_i, max_j in max_positions:
+        for i, j in divergence_points:
+            for arrow in traceback_matrix.iloc[i,j]:
+                traceback_matrix_copy = traceback_matrix.copy()
+                traceback_matrix_copy.iloc[i, j] = arrow
+                path = single_traceback(max_i, max_j, alignment_matrix, traceback_matrix_copy)
+                final_paths.append((max_i, max_j, path))
             
     unique_final_paths = []
     paths_added_to_unique_final_paths = [] # because paths are tuples weird things happen :((
@@ -97,26 +109,12 @@ def total_traceback(traceback_matrix):
             paths_added_to_unique_final_paths.append(tupled_path)
     
     return unique_final_paths
+
     
-def single_traceback(traceback_matrix):
-    i = traceback_matrix.shape[0] - 1
-    j = traceback_matrix.shape[1] - 1
-    
+def single_traceback(i, j, alignment_matrix, traceback_matrix):
     path = []
     
-    while not (i == 0 and j == 0):
-        
-        # boundary cases - if only i or only j = 0 : need both i and j to = 0
-        if i == 0: # need to move left
-            path.append((i, j, 'l'))
-            j -= 1
-            continue
-            
-        elif j == 0: # need to move up
-            path.append((i, j, 'u'))
-            i -= 1
-            continue
-    
+    while not (alignment_matrix.iloc[i, j] == 0):
         arrows = traceback_matrix.iloc[i, j]
         
         arrow_used = arrows[0] # default to first arrow if arrow is not specified. do not worry!! each divergence point (i.e. each arrow) will have a pass dedicated to it!! so no divergence points will be missed, even though the first arrow is the default
@@ -136,35 +134,24 @@ def single_traceback(traceback_matrix):
     
     return chronological_path
 
+
 def form_alignment(residues1, residues2, unique_final_paths):
     alignments = []
-    for path in unique_final_paths:
-        i = 0
-        j = 0
+    
+    for max_i, max_j, path in unique_final_paths:
         alignment1 = ''
         alignment2 = ''
-        movement_list = []
-        residue_count_1 = 1
-        residue_count_2 = 1
                 
-        for step in path:
-            movement = step[2]
-            movement_list.append(movement)
-            
-        for step in movement_list:
+        for (i, j, step) in path:
             if step == 'd':
-                alignment1 += residues1[residue_count_1]
-                alignment2 += residues2[residue_count_2]
-                residue_count_1 += 1
-                residue_count_2 += 1
+                alignment1 += residues1[j]
+                alignment2 += residues2[i]
             if step == 'u':
                 alignment1 += '-'
-                alignment2 += residues2[residue_count_2]
-                residue_count_2 += 1
+                alignment2 += residues2[i]
             if step == 'l':
-                alignment1 += residues1[residue_count_1]
+                alignment1 += residues1[j]
                 alignment2 += '-'
-                residue_count_1 += 1
         alignments.append((alignment1, alignment2))
     return(alignments)
 
@@ -190,7 +177,7 @@ def alignment_plot(alignment_matrix, paths):
     alignment_numpy = alignment_matrix.to_numpy(dtype=float)
     plt.matshow(alignment_numpy)
     
-    for path in paths:
+    for max_x, max_y, path in paths:
         x = []
         y = []
         for step in path:
@@ -198,16 +185,16 @@ def alignment_plot(alignment_matrix, paths):
             y.append(step[0])
         plt.plot(x, y, 'k')
     plt.show()
-    
+
+
         
 def main():
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix()
-    optimal_alignment = alignment_matrix.iloc[-1, -1]
     
     print('')
     print('ALIGNMENT MATRIX')
     print(alignment_matrix)
-    print("Optimal Alignment Score =", optimal_alignment)
+    print("Optimal Alignment Score =", alignment_matrix.max(axis=None))
     print('')
     print('TRACEBACK MATRIX')
     print(traceback_matrix)
@@ -215,7 +202,10 @@ def main():
     
     
     
-    traceback = total_traceback(traceback_matrix)
+    traceback = total_traceback(alignment_matrix, traceback_matrix)
+    print(traceback)
+    
+
     alignments = form_alignment(residues1, residues2, traceback)
     
     visualised_alignments = alignment_viewer(alignments)
@@ -226,7 +216,7 @@ def main():
         print('')
 
     alignment_plot(alignment_matrix, traceback)
-        
+
 
 
 main()
