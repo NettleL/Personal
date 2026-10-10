@@ -113,6 +113,8 @@ def total_traceback(alignment_matrix, traceback_matrix):
     2. Runs a total traceback (using single_traceback() function)
     and adds the traceback path to the list of final paths
     3. Returns the list of final paths
+    
+    Note: smith-waterman - need alignment matrix as well as traceback matrix (needleman-wunsch) - to find maximum values
     '''
     
     # note: dont use dictionary for storing tracebacks
@@ -245,63 +247,103 @@ def deduplicate_alignments(alignments):
     return unique_paths
 
 def alignment_viewer(alignments):
-    all_visualised_alignments = []
-    for alignment in alignments:
-        alignment1 = alignment[0]
-        alignment2 = alignment[1]
-        middle_row = ''
+    '''
+    Using a list of all optimal alignments - i.e pairs of two sequences - for each alignment,
+    the function creates a string that is printed between the two sequences.
+    For each position in the alignment, the middle string contains
+    - | (for matches)
+    - | (but red) for mismatches
+    -   (for gaps)
+    Therefore the function provides a better visualisation for the alignment
+    '''
+    
+    all_visualised_alignments = [] # list of all visualised alignments - is returned
+    
+    for alignment in alignments: # for each alignment
+        alignment1 = alignment[0] # alignment1 = aligned sequence 1
+        alignment2 = alignment[1] # alignment2 = aligned sequence 2
+        middle_row = ''# initialises empty middle row
         for count in range(len(alignment1)): # for each position in the alignment
-            if alignment1[count] == '-' or alignment2[count] == '-':
+            if alignment1[count] == '-' or alignment2[count] == '-': # if either aligned sequence has a gap
                 middle_row += ' '
-            elif alignment1[count] == alignment2[count]: # FOR AESTHETIC
+            elif alignment1[count] == alignment2[count]: # if the residues match
                 middle_row += '|'
-            else:
-                middle_row += Fore.RED + '|' + Fore.RESET
-        visualised_alignment = "\n".join([alignment1, middle_row, alignment2])
+            else: # if the residues don't match
+                middle_row += Fore.RED + '|' + Fore.RESET # note: for aesthetics
+        visualised_alignment = "\n".join([alignment1, middle_row, alignment2]) # joins each line, separated by a newline
         all_visualised_alignments.append(visualised_alignment)
     return all_visualised_alignments
 
-# FOR AESTHETIC
+# note: for aesthetics
 def alignment_plot(alignment_matrix, paths):
-    alignment_numpy = alignment_matrix.to_numpy(dtype=float)
-    plt.matshow(alignment_numpy)
+    '''
+    Plots the alignment matrix and traceback paths taken to form the optimal alignments using matplotlib
+    '''
     
+    alignment_numpy = alignment_matrix.to_numpy(dtype=float) # required to use matplotlib i think
+    plt.matshow(alignment_numpy) # plots alignment matrix
+    
+    # for each path, plots the traceback path on the same plot
     for path in paths:
+        # initialise two lists to contain x & y coordinates
         x = []
         y = []
+        
+        # for each step in path, add coordinates to x and y lists
         for step in path:
-            x.append(step[1]) # to match matrix coordinates - x = j (columns) and y = i (rows)
+            # note: to match matrix coordinates - x = j (columns) and y = i (rows)
+            x.append(step[1])
             y.append(step[0])
         plt.plot(x, y, 'k')
-    plt.show()
+    plt.show() # shows plot
 
 
         
 def main():
+    '''
+    Runs total local alignment program
+    '''
+    
+    # user inputs two sequences
     sequence1 = input("Sequence 1: ")
     sequence2 = input("Sequence 2: ")
     
+    # forms the alignment and traceback matrices
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix(sequence1, sequence2)
     
+    # determines the optimal alignment
+    # smith-waterman - optimal alignment is the maximum cell score (in the alignment matrix)
+    optimal_alignment = alignment_matrix.max(axis=None)
+    
+    # prints the matrices
     print('')
     print('ALIGNMENT MATRIX')
     print(alignment_matrix)
-    print("Optimal Alignment Score =", alignment_matrix.max(axis=None))
+    print("Optimal Alignment Score =", optimal_alignment)
     print('')
     print('TRACEBACK MATRIX')
     print(traceback_matrix)
     print('')
     
+    # runs the traceback - collects list of all optimal paths
     traceback = total_traceback(alignment_matrix, traceback_matrix)
+    
+    # translates each path in the traceback list into an alignment
     alignments = form_alignment(residues1, residues2, traceback)
+    
+    # uses the list of alignments to deduplicate the alignments
     unique_alignments = deduplicate_alignments(alignments)
+    
+    # visualises the alignments (in text form)
     visualised_alignments = alignment_viewer(unique_alignments)
     
+    # prints out each visualised alignment
     for alignment in visualised_alignments:
         print('ALIGNMENT')
         print(alignment)
         print('')
-
+    
+    # plots the alignment matrix and traceback path
     alignment_plot(alignment_matrix, traceback)
 
 
