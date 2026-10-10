@@ -1,7 +1,6 @@
 import pandas as pd
 
 # AESTHETICS
-from colorama import Fore
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -265,7 +264,7 @@ def alignment_viewer(alignments):
             elif alignment1[count] == alignment2[count]: # if the residues match
                 middle_row += '|'
             else: # if the residues don't match
-                middle_row += Fore.RED + '|' + Fore.RESET # note: for aesthetics
+                middle_row += '*'
         visualised_alignment = "\n".join([alignment1, middle_row, alignment2]) # joins each line, separated by a newline
         all_visualised_alignments.append(visualised_alignment)
     return all_visualised_alignments
