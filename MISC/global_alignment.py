@@ -120,7 +120,7 @@ def total_traceback(traceback_matrix):
     i = traceback_matrix.shape[0] - 1
     j = traceback_matrix.shape[1] - 1
     
-    # runs a traceback
+    # runs the traceback
     paths = single_traceback(i, j, traceback_matrix)
     
     # adds reversed path to final_paths
@@ -187,31 +187,49 @@ def single_traceback(i, j, traceback_matrix, current_path=None):
         return paths # full list of paths
         
 def form_alignment(residues1, residues2, unique_final_paths):
+    '''
+    Uses the list of paths returned by total_traceback() to reconstruct an alignment.
+    For each path (i.e. each list of movements), each movement represents one of the following:
+    - diagonal - match/mismatch
+    - up - gap in sequence 1
+    - left - gap in sequence 2
+    Therefore the function uses the paths to form their associated alignments.
+    '''
+    
+    # list of alignments - will have one for each path
     alignments = []
-    for path in unique_final_paths:
-        alignment1 = ''
-        alignment2 = ''
+    
+    for path in unique_final_paths: # for each path
+        alignment1 = '' # initialises a string which will contain aligned sequence 1
+        alignment2 = '' # initialises a string which will contain aligned sequence 2
                 
-        for (i, j, step) in path:
-            if step == 'd':
+        for (i, j, step) in path: # for each step in the path
+            if step == 'd': # match/mismatch (no gaps - add residue1[j] to alignment 1 and residue2[i] to alignment2)
                 alignment1 += residues1[j]
                 alignment2 += residues2[i]
-            if step == 'u':
+            if step == 'u': # gap in alignment 1 - add gap to alignment 1 and residue2[i] to alignment2
                 alignment1 += '-'
                 alignment2 += residues2[i]
-            if step == 'l':
+            if step == 'l': # gap in alignment 2 - add residue1[j] to alignment 1 and gap to alignment 2
                 alignment1 += residues1[j]
                 alignment2 += '-'
         alignments.append((alignment1, alignment2))
     return(alignments)
 
 def deduplicate_alignments(alignments):
-    seen = set() # tuples are weird
-    unique_paths = []
+    '''
+    Deduplicates alignments - determines if the alignments are duplicates based on the strings formed in form_alignment()
+    '''
+    
+    # contains a set of all seen alignments
+    seen = set() # note: tuples are weird - can't do a list
+    unique_paths = [] # list of unique paths
+
+    # for each alignment (pair containing sequence1, sequence2) returned by form_alignment()
     for sequence1, sequence2 in alignments:
-        if (sequence1, sequence2) not in seen:
-            seen.add((sequence1, sequence2))
-            unique_paths.append((sequence1, sequence2))
+        if (sequence1, sequence2) not in seen: # if the alignment is unique (not seen before) 
+            seen.add((sequence1, sequence2)) # add to seen
+            unique_paths.append((sequence1, sequence2)) # add to unique paths
     return unique_paths
 
 def alignment_viewer(alignments):
