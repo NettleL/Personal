@@ -1,3 +1,22 @@
+'''
+SMITH-WATERMAN LOCAL SEQUENCE ALIGNER
+
+I developed this smith-waterman algorithm!
+
+I began developing this program after learning how to manually locally align two sequences in my UNSW BINF2010 lecture!
+(Thank you to the BINF2020 Lecturers + Tutors!)
+
+Notes
+-   It is a bit slow + can only align short sequences. 
+    It can comfortably align approx. 100-residue sequences but I haven't tested the limits of my program.
+    -   I want to try using numpy instead of pandas?
+-   This returns all optimal alignments (contributing to its slowness) - I know some aligners only return a few
+-   This uses a simple scoring system and aligns any sequence (not just nucleic acids/proteins).
+    I want to try implementing matrices like BLOSUM and PAM!
+
+(This program contains no AI-generated code - I programmed this myself :) )
+'''
+
 import pandas as pd
 
 # AESTHETICS
