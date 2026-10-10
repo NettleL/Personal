@@ -5,7 +5,8 @@ from colorama import Fore
 import matplotlib.pyplot as plt
 import numpy as np
 
-# constants - maybe later add the ability for the user to change these constants??
+# constants
+# note: maybe later add the ability for the user to change these constants??
 MATCH_SCORE = 1
 MISMATCH_SCORE = -1
 GAP_SCORE = -2
@@ -37,7 +38,7 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     For a given cell, it returns the cell score and a list of the preceding cells (d, u, l) that were used to calculate it
     '''
     
-    # Calculating Scores
+    # calculating scores
     if residue1 == residue2:
         sij = MATCH_SCORE
     else:
@@ -47,10 +48,10 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     score2 = Score_gj + GAP_SCORE
     score3 = Score_ih + GAP_SCORE
 
-    # Determines the Maximum
+    # determines the maximum
     final_cell_score = max(0, score1, score2, score3)
     
-    # Initialises and fills a list the directions of the preceding cells (d, u, l)
+    # initialises and fills a list the directions of the preceding cells (d, u, l)
     # that were used to calculate the cell score
     trace_arrow = []
     
@@ -79,11 +80,11 @@ def form_matrix(sequence1, sequence2):
     residues2 = ['-'] + list(sequence2) # add a gap
     
     # initialises a table of cell scores with a default score of 0
-    # don't use residues - so index + column vals are unique    
+    # note: don't use residues - so index + column vals are unique    
     df = pd.DataFrame(0, index = range(len(residues2)), columns = range(len(residues1)))
     
     # initialises a table of directions with a default value of []
-    # magic :)) to initialise every cell as a lil list :(( want to find a better prettier way
+    # note: magic :)) to initialise every cell as a lil list :(( want to find a better prettier way
     traceback_df = pd.DataFrame([[[] for j in range(len(residues1))] for i in range(len(residues2))],
                                 index = range(len(residues2)), columns = range(len(residues1)))
     
@@ -106,53 +107,96 @@ def form_matrix(sequence1, sequence2):
     return residues1, residues2, df, traceback_df
 
 def total_traceback(alignment_matrix, traceback_matrix):
-    max_positions = [] # to start traceback from
+    '''
+    Using the traceback matrix
+    1. Determines the endpoint which the traceback starts from (maximum value)
+    2. Runs a total traceback (using single_traceback() function)
+    and adds the traceback path to the list of final paths
+    3. Returns the list of final paths
+    '''
     
-    # dont use dictionary for storing tracebacks
+    # note: dont use dictionary for storing tracebacks
     final_paths = []
     
+    # determines list of endpoints to start traceback from (smith-waterman - maximum score)
+    max_positions = []
     max_value = alignment_matrix.values.max()
     
     for i in alignment_matrix.index:
         for j in alignment_matrix.columns:
             if alignment_matrix.iloc[i, j] == max_value:
                 max_positions.append((i, j))
-
+    
+    # runs a traceback from each max_point
     for max_i, max_j in max_positions:
         paths = single_traceback(max_i, max_j, alignment_matrix, traceback_matrix)
+        # adds reversed path to final_paths
         for path in paths:
-            final_paths.extend([path[::-1]]) # adds reversed path to final_paths
+            final_paths.extend([path[::-1]])
 
     return final_paths
 
-    
 def single_traceback(i, j, alignment_matrix, traceback_matrix, current_path=None):
-    # builds off current_path
+    '''
+    Recursively implements a traceback through the traceback_matrix to find all possible alignments.
     
+    The function uses the values (d, u, l) of cell_ij in the traceback matrix.
+    If this is the first call/use of the function (no current_path is provided), the current_path is initialised.
+    Otherwise - i.e. when single_traceback() is recursively called within the function - the function uses the given current_path
+    
+    If the path is complete (smith-waterman - cell value = 0), the function returns the current_path as one finished traceback route.
+    
+    Otherwise, the function traces back (using directions d, u, l) to a previous cell,
+    appends this movement to the current_path, and calls this function again with the new updated path.
+    Therefore, if there are multiple arrows, the function recursively calls itself multiple times (once for each arrow),
+    making multiple new paths (if these new paths have multiple arrows, the function recursively calls itself, making more paths e.tc.)
+    until all possible paths have been traced. Once all the paths are finished (i, j = 0, 0), the function appends them to the list of paths.
+    
+    Therefore, while the function traces back one step at a time, when it is called by total_traceback(), it recursively calls itself multiple times
+    until it and returns a list of all possible paths (where each path is a list of tuples).
+    
+    Note on variables:
+    - current_path contains the traceback path of one single branch of the recursion
+    - once the path is complete, it is returned (to single_traceback(), which called itself) and adds to paths
+    - finally, the list of paths is returned to total_traceback()
+    
+    Note: Quite difficult :(( - never wrote this type of recursion before
+    '''
+    
+    arrows = traceback_matrix.iloc[i, j] # retrieves arrows for a single cell (for a single traceback)
+    
+    # i.e. when the function is called by total_traceback - starts new empty current_path
     if current_path is None:
         current_path = []
     
-    if alignment_matrix.iloc[i, j] == 0: # need alignment matrix to know if the cell = 0
-        return [current_path + [(i, j, None)]] # current_path.append() returns None :((
+    # if current_path is completed (reached the ijth cell), return it to the instance of single_traceback() that called it
+    if alignment_matrix.iloc[i, j] == 0:
+        return [current_path + [(i, j, None)]] # note: current_path.append() returns None :((
     
-    else: # recursion yippee :))) was a bit hard to do - never done this type of recursion before
-        arrows = traceback_matrix.iloc[i, j]
-        
-        if not arrows:
-            return [current_path]
-                
-        else: 
-            paths = []
+    # if current_path is completed (smith-waterman - cell score = 0), return it to the instance of single_traceback() that called it        
+    elif not arrows: 
+        return [current_path + [(i, j, None)]]
+    
+    # note: recursion yippee :))) was a bit hard to do - never done this type of recursion before
+    else:
+        paths = [] # list of final paths
             
-            for arrow in arrows:
-                new_path = current_path + [(i, j, arrow)]
-                if arrow == 'd':
-                    paths.extend(single_traceback(i-1, j-1, alignment_matrix, traceback_matrix, new_path))
-                elif arrow == 'u':
-                    paths.extend(single_traceback(i-1, j, alignment_matrix, traceback_matrix, new_path))
-                elif arrow == 'l':
-                    paths.extend(single_traceback(i, j-1, alignment_matrix, traceback_matrix, new_path))
-            return paths
+        for arrow in arrows: # for each arrow
+            # creates new path in a separate list
+            # each arrow in each recursive call has its own path
+            new_path = current_path + [(i, j, arrow)]
+            
+            
+            # function recursively calls itself, continuing the traceback from new_path
+            # until finally this collectively returns a list of all complete paths
+            # which is all added to paths
+            if arrow == 'd':
+                paths.extend(single_traceback(i-1, j-1, alignment_matrix, traceback_matrix, new_path))
+            elif arrow == 'u':
+                paths.extend(single_traceback(i-1, j, alignment_matrix, traceback_matrix, new_path))
+            elif arrow == 'l':
+                paths.extend(single_traceback(i, j-1, alignment_matrix, traceback_matrix, new_path))
+        return paths # full list of paths
     
 def form_alignment(residues1, residues2, unique_final_paths):
     alignments = []
@@ -231,10 +275,7 @@ def main():
     print(traceback_matrix)
     print('')
     
-    
-    
     traceback = total_traceback(alignment_matrix, traceback_matrix)
-
     alignments = form_alignment(residues1, residues2, traceback)
     unique_alignments = deduplicate_alignments(alignments)
     visualised_alignments = alignment_viewer(unique_alignments)
