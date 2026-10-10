@@ -11,8 +11,33 @@ MISMATCH_SCORE = -1
 GAP_SCORE = -2
 
 def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
-    #where g refers to position i-1 and h refers to position j-1
+    '''
+    Determines the score for each cell in the score matrix
+    The score of cell_ij is dependent on the scores of the cells preceding it
     
+    Note
+        - s_ij (lowercase) = score for aligning only aᵢ with bⱼ (match or mismatch)
+        - S_ij (uppercase) = score of optimal alignment of a₁..aᵢ with b₁..bⱼ -> i.e. a preceding cell
+    
+    Note on Parameters:
+    (g refers to position i-1 and h refers to position j-1)
+        - Score_gh: score of cell i-1, j-1
+        - Score_gj: score of cell i-1, j
+        - Score_ih: score of cell i, j-1
+    
+    Three scores are calculated and the maximum score is used
+        1. Score_gh + s_ij (match/mismatch):            dependent on the score of the diagonal (upper left) cell (d)
+        2. Score_gj + GAP_SCORE (gap in alignment 1):   dependent on the score of the upper cell (u)
+        3. Score_ih + GAP_SCORE (gap in alignment 2):   dependent on the score of the left cell (l)
+    However if the maximum is less than 0, the cell score is assigned 0
+    If the score is 0, the alignment ends, so the preceding cells were not used
+    
+    Note that out of the three score calculations, the maximum score may come from multiple scores
+    
+    For a given cell, it returns the cell score and a list of the preceding cells (d, u, l) that were used to calculate it
+    '''
+    
+    # Calculating Scores
     if residue1 == residue2:
         sij = MATCH_SCORE
     else:
@@ -22,37 +47,55 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     score2 = Score_gj + GAP_SCORE
     score3 = Score_ih + GAP_SCORE
 
+    # Determines the Maximum
     final_cell_score = max(0, score1, score2, score3)
+    
+    # Initialises and fills a list the directions of the preceding cells (d, u, l)
+    # that were used to calculate the cell score
     trace_arrow = []
     
-    if final_cell_score > 0:
+    if final_cell_score > 0: # if cell score is less than 0, no direction is added
         if final_cell_score == score1:
-            trace_arrow.append('d')
+            trace_arrow.append('d') # diagonal
         if final_cell_score == score2:
-            trace_arrow.append('u')
+            trace_arrow.append('u') # upper
         if final_cell_score == score3:
-            trace_arrow.append('l')
-  
+            trace_arrow.append('l') # left
+
     return final_cell_score, trace_arrow
 
-def form_matrix():
-    sequence1 = input("Sequence 1: ")
-    sequence2 = input("Sequence 2: ")
+def form_matrix(sequence1, sequence2):
+    '''
+    Given two sequences,
+        1. Converts the sequences to a list of residues, adding a gap at the start
+        2. Creates two dataframes
+            a. a cell alignment score table
+            b. a traceback table (which contains the directions of the preceding cells used to determine that cells score)
+        3. Fills in the cells of both dataframes
+        4. Returns both sequences and both dataframes
+    '''
     
-    residues1 = ['-'] + list(sequence1)
-    residues2 = ['-'] + list(sequence2)
-        
-    df = pd.DataFrame(0, index = range(len(residues2)), columns = range(len(residues1))) # so index + column vals are unique
-    traceback_df = pd.DataFrame([[[] for j in range(len(residues1))] for i in range(len(residues2))], # magic :)) to initialise every cell as a lil list :(( want to find a better way
+    residues1 = ['-'] + list(sequence1) # add a gap
+    residues2 = ['-'] + list(sequence2) # add a gap
+    
+    # initialises a table of cell scores with a default score of 0
+    # don't use residues - so index + column vals are unique    
+    df = pd.DataFrame(0, index = range(len(residues2)), columns = range(len(residues1)))
+    
+    # initialises a table of directions with a default value of []
+    # magic :)) to initialise every cell as a lil list :(( want to find a better prettier way
+    traceback_df = pd.DataFrame([[[] for j in range(len(residues1))] for i in range(len(residues2))],
                                 index = range(len(residues2)), columns = range(len(residues1)))
     
-    # Fill in cells
+    # fill in cells
     for j in range(len(residues1)):
         for i in range(len(residues2)):
+            # initialise table - if i or j = 0, use initialising values
+            # smith-waterman - initialise to 0
             if i == 0 or j == 0:
-                df.loc[i, j] = 0 # smith-waterman - initialise to 0
+                df.loc[i, j] = 0
                 traceback_df.loc[i, j] = []
-            else:
+            else: # determine value of cell ij in both tables using cell_score()
                 score, trace_value = cell_score(residues1[j],
                                                 residues2[i],
                                                 df.loc[i-1, j-1],
@@ -174,7 +217,10 @@ def alignment_plot(alignment_matrix, paths):
 
         
 def main():
-    residues1, residues2, alignment_matrix, traceback_matrix = form_matrix()
+    sequence1 = input("Sequence 1: ")
+    sequence2 = input("Sequence 2: ")
+    
+    residues1, residues2, alignment_matrix, traceback_matrix = form_matrix(sequence1, sequence2)
     
     print('')
     print('ALIGNMENT MATRIX')
