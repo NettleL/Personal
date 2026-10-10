@@ -92,8 +92,10 @@ def form_matrix(sequence1, sequence2):
             # needleman-wunsch - initialisation is dependent on GAP_SCORE
             if i == 0: # initialise first row
                 df.loc[i, j] = GAP_SCORE * j
+                traceback_df.loc[i, j] = ['l'] if j != 0 else []
             elif j == 0: # initialise first column
                 df.loc[i, j] = GAP_SCORE * i
+                traceback_df.loc[i, j] = ['u'] if i != 0 else []
             else: # determine value of cell ij in both tables using cell_score()
                 score, trace_value = cell_score(residues1[j],
                                                 residues2[i],

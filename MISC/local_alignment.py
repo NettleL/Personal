@@ -171,13 +171,9 @@ def single_traceback(i, j, alignment_matrix, traceback_matrix, current_path=None
     if current_path is None:
         current_path = []
     
-    # if current_path is completed (reached the ijth cell), return it to the instance of single_traceback() that called it
+    # if current_path is completed (smith-waterman - cell score = 0), return it to the instance of single_traceback() that called it
     if alignment_matrix.iloc[i, j] == 0:
         return [current_path + [(i, j, None)]] # note: current_path.append() returns None :((
-    
-    # if current_path is completed (smith-waterman - cell score = 0), return it to the instance of single_traceback() that called it        
-    elif not arrows: 
-        return [current_path + [(i, j, None)]]
     
     # note: recursion yippee :))) was a bit hard to do - never done this type of recursion before
     else:
