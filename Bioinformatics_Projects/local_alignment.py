@@ -9,7 +9,6 @@ I began developing this program after learning how to manually locally align two
 Notes
 -   It is a bit slow + can only align short sequences. 
     It can comfortably align approx. 100-residue sequences but I haven't tested the limits of my program.
-    -   I want to try using numpy instead of pandas?
 -   This returns all optimal alignments (contributing to its slowness) - I know some aligners only return a few
 -   This uses a simple scoring system and aligns any sequence (not just nucleic acids/proteins).
     I want to try implementing matrices like BLOSUM and PAM!
@@ -17,11 +16,8 @@ Notes
 (This program contains no AI-generated code - I programmed this myself :) )
 '''
 
-import pandas as pd
-
-# AESTHETICS
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
 # constants
 # note: maybe later add the ability for the user to change these constants??
@@ -99,12 +95,14 @@ def form_matrix(sequence1, sequence2):
     
     # initialises a table of cell scores with a default score of 0
     # note: don't use residues - so index + column vals are unique    
-    df = pd.DataFrame(0, index = range(len(residues2)), columns = range(len(residues1)))
+    df = np.zeros((len(residues2), len(residues1)))
     
     # initialises a table of directions with a default value of []
-    # note: magic :)) to initialise every cell as a lil list :(( want to find a better prettier way
-    traceback_df = pd.DataFrame([[[] for j in range(len(residues1))] for i in range(len(residues2))],
-                                index = range(len(residues2)), columns = range(len(residues1)))
+    traceback_df = np.empty((len(residues2), len(residues1)), dtype=object)
+    
+    for i in range(len(residues2)):
+        for j in range(len(residues1)):
+            traceback_df[i, j] = []
     
     # fill in cells
     for j in range(len(residues1)):
@@ -112,16 +110,16 @@ def form_matrix(sequence1, sequence2):
             # initialise table - if i or j = 0, use initialising values
             # smith-waterman - initialise to 0
             if i == 0 or j == 0:
-                df.loc[i, j] = 0
-                traceback_df.loc[i, j] = []
+                df[i, j] = 0
+                traceback_df[i, j] = []
             else: # determine value of cell ij in both tables using cell_score()
                 score, trace_value = cell_score(residues1[j],
                                                 residues2[i],
-                                                df.loc[i-1, j-1],
-                                                df.loc[i-1, j],
-                                                df.loc[i, j-1])
-                df.loc[i, j] = score
-                traceback_df.loc[i, j] = trace_value
+                                                df[i-1, j-1],
+                                                df[i-1, j],
+                                                df[i, j-1])
+                df[i, j] = score
+                traceback_df[i, j] = trace_value
     return residues1, residues2, df, traceback_df
 
 def total_traceback(alignment_matrix, traceback_matrix):
@@ -139,13 +137,10 @@ def total_traceback(alignment_matrix, traceback_matrix):
     final_paths = []
     
     # determines list of endpoints to start traceback from (smith-waterman - maximum score)
-    max_positions = []
-    max_value = alignment_matrix.values.max()
+    max_value = alignment_matrix.max()
     
-    for i in alignment_matrix.index:
-        for j in alignment_matrix.columns:
-            if alignment_matrix.iloc[i, j] == max_value:
-                max_positions.append((i, j))
+    #note: need asterisk for argument unpacking
+    max_positions = list(zip(*np.where(alignment_matrix == max_value)))
     
     # runs a traceback from each max_point
     for max_i, max_j in max_positions:
@@ -183,14 +178,14 @@ def single_traceback(i, j, alignment_matrix, traceback_matrix, current_path=None
     Note: Quite difficult :(( - never wrote this type of recursion before
     '''
     
-    arrows = traceback_matrix.iloc[i, j] # retrieves arrows for a single cell (for a single traceback)
+    arrows = traceback_matrix[i, j] # retrieves arrows for a single cell (for a single traceback)
     
     # i.e. when the function is called by total_traceback - starts new empty current_path
     if current_path is None:
         current_path = []
     
     # if current_path is completed (smith-waterman - cell score = 0), return it to the instance of single_traceback() that called it
-    if alignment_matrix.iloc[i, j] == 0:
+    if alignment_matrix[i, j] == 0:
         return [current_path + [(i, j, None)]] # note: current_path.append() returns None :((
     
     # note: recursion yippee :))) was a bit hard to do - never done this type of recursion before
@@ -294,8 +289,7 @@ def alignment_plot(alignment_matrix, paths):
     Plots the alignment matrix and traceback paths taken to form the optimal alignments using matplotlib
     '''
     
-    alignment_numpy = alignment_matrix.to_numpy(dtype=float) # required to use matplotlib i think
-    plt.matshow(alignment_numpy) # plots alignment matrix
+    plt.matshow(alignment_matrix) # plots alignment matrix
     
     # for each path, plots the traceback path on the same plot
     for path in paths:

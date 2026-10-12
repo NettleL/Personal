@@ -9,7 +9,6 @@ I began developing this program after learning how to manually globally align tw
 Notes
 -   It is a bit slow + can only align short sequences. 
     It can comfortably align approx. 100-residue sequences but I haven't tested the limits of my program.
-    -   I want to try using numpy instead of pandas?
 -   This returns all optimal alignments (contributing to its slowness) - I know some aligners only return a few
 -   This uses a simple scoring system and aligns any sequence (not just nucleic acids/proteins).
     I want to try implementing matrices like BLOSUM and PAM!
@@ -17,11 +16,8 @@ Notes
 (This program contains no AI-generated code - I programmed this myself :) )
 '''
 
-import pandas as pd
-
-# AESTHETICS
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
 # constants
 # note: maybe later add the ability for the user to change these constants??
@@ -95,33 +91,35 @@ def form_matrix(sequence1, sequence2):
     residues2 = ['-'] + list(sequence2) # add a gap
     
     # initialises a table of cell scores with a default score of 0
-    # note: don't use residues - so index + column vals are unique
-    df = pd.DataFrame(0, index = range(len(residues2)), columns = range(len(residues1)))
+    # note: don't use residues - so index + column vals are unique    
+    df = np.zeros((len(residues2), len(residues1)))
     
     # initialises a table of directions with a default value of []
-    # note: magic :)) to initialise every cell as a lil list :(( want to find a better prettier way
-    traceback_df = pd.DataFrame([[[] for j in range(len(residues1))] for i in range(len(residues2))],
-                                    index = range(len(residues2)), columns = range(len(residues1)))
-
+    traceback_df = np.empty((len(residues2), len(residues1)), dtype=object)
+    
+    for i in range(len(residues2)):
+        for j in range(len(residues1)):
+            traceback_df[i, j] = []
+    
     # fill in cells
     for j in range(len(residues1)):
         for i in range(len(residues2)):
             # initialise table - if i or j = 0, use initialising values
             # needleman-wunsch - initialisation is dependent on GAP_SCORE
             if i == 0: # initialise first row
-                df.loc[i, j] = GAP_SCORE * j
-                traceback_df.loc[i, j] = ['l'] if j != 0 else []
+                df[i, j] = GAP_SCORE * j
+                traceback_df[i, j] = ['l'] if j != 0 else []
             elif j == 0: # initialise first column
-                df.loc[i, j] = GAP_SCORE * i
-                traceback_df.loc[i, j] = ['u'] if i != 0 else []
+                df[i, j] = GAP_SCORE * i
+                traceback_df[i, j] = ['u'] if i != 0 else []
             else: # determine value of cell ij in both tables using cell_score()
                 score, trace_value = cell_score(residues1[j],
                                                 residues2[i],
-                                                df.loc[i-1, j-1],
-                                                df.loc[i-1, j],
-                                                df.loc[i, j-1])
-                df.loc[i, j] = score
-                traceback_df.loc[i, j] = trace_value
+                                                df[i-1, j-1],
+                                                df[i-1, j],
+                                                df[i, j-1])
+                df[i, j] = score
+                traceback_df[i, j] = trace_value
     return residues1, residues2, df, traceback_df
 
 def total_traceback(traceback_matrix):
@@ -178,7 +176,7 @@ def single_traceback(i, j, traceback_matrix, current_path=None):
     Note: Quite difficult :(( - never wrote this type of recursion before
     '''
     
-    arrows = traceback_matrix.iloc[i, j] # retrieves arrows for a single cell (for a single traceback)
+    arrows = traceback_matrix[i, j] # retrieves arrows for a single cell (for a single traceback)
 
     # i.e. when the function is called by total_traceback - starts new empty current_path
     if current_path is None:
@@ -288,8 +286,7 @@ def alignment_plot(alignment_matrix, paths):
     Plots the alignment matrix and traceback paths taken to form the optimal alignments using matplotlib
     '''
     
-    alignment_numpy = alignment_matrix.to_numpy(dtype=float) # required to use matplotlib i think
-    plt.matshow(alignment_numpy) # plots alignment matrix
+    plt.matshow(alignment_matrix) # plots alignment matrix
     
     # for each path, plots the traceback path on the same plot
     for path in paths:
@@ -320,7 +317,7 @@ def main():
     
     # determines the optimal alignment
     # needleman-wunsch - optimal alignment is the final cell score (in the alignment matrix)
-    optimal_alignment = alignment_matrix.iloc[-1, -1]
+    optimal_alignment = alignment_matrix[-1, -1]
     
     # prints the matrices
     print('')
