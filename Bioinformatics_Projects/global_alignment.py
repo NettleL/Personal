@@ -276,7 +276,13 @@ def alignment_viewer(alignments):
                 middle_row += '|'
             else: # if the residues don't match
                 middle_row += '*'
-        visualised_alignment = "\n".join([alignment1, middle_row, alignment2]) # joins each line, separated by a newline
+                
+        visualised_alignment = []
+        
+        # chops the alignment into small 100-residue sections to better visualise long alignments
+        for i in range(0, len(alignment1), 100):
+            segment = "\n".join([alignment1[i:i+100], middle_row[i:i+100], alignment2[i:i+100]]) # joins each line, separated by a newline
+            visualised_alignment.append(segment)
         all_visualised_alignments.append(visualised_alignment)
     return all_visualised_alignments
 
@@ -344,8 +350,9 @@ def main():
     # prints out each visualised alignment
     for alignment in visualised_alignments:
         print('ALIGNMENT')
-        print(alignment)
-        print('')
+        for segment in alignment:
+            print(segment)
+            print('')
         
     # plots the alignment matrix and traceback path
     alignment_plot(alignment_matrix, traceback)
