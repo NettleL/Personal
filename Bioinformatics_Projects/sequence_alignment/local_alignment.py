@@ -1,9 +1,9 @@
 '''
-NEEDLEMAN-WUNSCH GLOBAL SEQUENCE ALIGNER
+SMITH-WATERMAN LOCAL SEQUENCE ALIGNER
 
-I developed this needleman-wunsch algorithm!
+I developed this smith-waterman algorithm!
 
-I began developing this program after learning how to manually globally align two sequences in my UNSW BINF2010 lecture!
+I began developing this program after learning how to manually locally align two sequences in my UNSW BINF2010 lecture!
 (Thank you to the BINF2020 Lecturers + Tutors!)
 
 Notes
@@ -44,6 +44,8 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
         1. Score_gh + s_ij (match/mismatch):            dependent on the score of the diagonal (upper left) cell (d)
         2. Score_gj + GAP_SCORE (gap in alignment 1):   dependent on the score of the upper cell (u)
         3. Score_ih + GAP_SCORE (gap in alignment 2):   dependent on the score of the left cell (l)
+    However if the maximum is less than 0, the cell score is assigned 0
+    If the score is 0, the alignment ends, so the preceding cells were not used
     
     Note that out of the three score calculations, the maximum score may come from multiple scores
     
@@ -60,20 +62,21 @@ def cell_score(residue1, residue2, Score_gh, Score_gj, Score_ih):
     score2 = Score_gj + GAP_SCORE
     score3 = Score_ih + GAP_SCORE
 
-    # determines the maximum score
-    final_cell_score = max(score1, score2, score3)
+    # determines the maximum
+    final_cell_score = max(0, score1, score2, score3)
     
     # initialises and fills a list the directions of the preceding cells (d, u, l)
     # that were used to calculate the cell score
     trace_arrow = []
     
-    if final_cell_score == score1:
-        trace_arrow.append('d') # diagonal
-    if final_cell_score == score2:
-        trace_arrow.append('u') # upper
-    if final_cell_score == score3:
-        trace_arrow.append('l') # left
-  
+    if final_cell_score > 0: # if cell score is less than 0, no direction is added
+        if final_cell_score == score1:
+            trace_arrow.append('d') # diagonal
+        if final_cell_score == score2:
+            trace_arrow.append('u') # upper
+        if final_cell_score == score3:
+            trace_arrow.append('l') # left
+
     return final_cell_score, trace_arrow
 
 def form_matrix(sequence1, sequence2):
@@ -105,13 +108,10 @@ def form_matrix(sequence1, sequence2):
     for j in range(len(residues1)):
         for i in range(len(residues2)):
             # initialise table - if i or j = 0, use initialising values
-            # needleman-wunsch - initialisation is dependent on GAP_SCORE
-            if i == 0: # initialise first row
-                df[i, j] = GAP_SCORE * j
-                traceback_df[i, j] = ['l'] if j != 0 else []
-            elif j == 0: # initialise first column
-                df[i, j] = GAP_SCORE * i
-                traceback_df[i, j] = ['u'] if i != 0 else []
+            # smith-waterman - initialise to 0
+            if i == 0 or j == 0:
+                df[i, j] = 0
+                traceback_df[i, j] = []
             else: # determine value of cell ij in both tables using cell_score()
                 score, trace_value = cell_score(residues1[j],
                                                 residues2[i],
@@ -122,34 +122,36 @@ def form_matrix(sequence1, sequence2):
                 traceback_df[i, j] = trace_value
     return residues1, residues2, df, traceback_df
 
-def total_traceback(traceback_matrix):
+def total_traceback(alignment_matrix, traceback_matrix):
     '''
     Using the traceback matrix
-    1. Determines the endpoint which the traceback starts from (last cell in table)
+    1. Determines the endpoint which the traceback starts from (maximum value)
     2. Runs a total traceback (using single_traceback() function)
     and adds the traceback path to the list of final paths
     3. Returns the list of final paths
     
-    Note: needleman-wunsch - only need traceback matrix (unlike smith-waterman)
+    Note: smith-waterman - need alignment matrix as well as traceback matrix (needleman-wunsch) - to find maximum values
     '''
     
     # note: dont use dictionary for storing tracebacks
     final_paths = []
     
-    # determines endpoint to start traceback from (needleman-wunsch - last cell)
-    i = traceback_matrix.shape[0] - 1
-    j = traceback_matrix.shape[1] - 1
+    # determines list of endpoints to start traceback from (smith-waterman - maximum score)
+    max_value = alignment_matrix.max()
     
-    # runs the traceback
-    paths = single_traceback(i, j, traceback_matrix)
+    #note: need asterisk for argument unpacking
+    max_positions = list(zip(*np.where(alignment_matrix == max_value)))
     
-    # adds reversed path to final_paths
-    for path in paths:
-        final_paths.extend([path[::-1]])
-    
+    # runs a traceback from each max_point
+    for max_i, max_j in max_positions:
+        paths = single_traceback(max_i, max_j, alignment_matrix, traceback_matrix)
+        # adds reversed path to final_paths
+        for path in paths:
+            final_paths.extend([path[::-1]])
+
     return final_paths
-    
-def single_traceback(i, j, traceback_matrix, current_path=None):
+
+def single_traceback(i, j, alignment_matrix, traceback_matrix, current_path=None):
     '''
     Recursively implements a traceback through the traceback_matrix to find all possible alignments.
     
@@ -157,7 +159,7 @@ def single_traceback(i, j, traceback_matrix, current_path=None):
     If this is the first call/use of the function (no current_path is provided), the current_path is initialised.
     Otherwise - i.e. when single_traceback() is recursively called within the function - the function uses the given current_path
     
-    If the path is complete (needleman-wunsch - i, j  = 0, 0), the function returns the current_path as one finished traceback route.
+    If the path is complete (smith-waterman - cell value = 0), the function returns the current_path as one finished traceback route.
     
     Otherwise, the function traces back (using directions d, u, l) to a previous cell,
     appends this movement to the current_path, and calls this function again with the new updated path.
@@ -177,35 +179,36 @@ def single_traceback(i, j, traceback_matrix, current_path=None):
     '''
     
     arrows = traceback_matrix[i, j] # retrieves arrows for a single cell (for a single traceback)
-
+    
     # i.e. when the function is called by total_traceback - starts new empty current_path
     if current_path is None:
         current_path = []
     
-    # if current_path is completed, return it to the instance of single_traceback() that called it    
-    if i == 0 and j == 0:
+    # if current_path is completed (smith-waterman - cell score = 0), return it to the instance of single_traceback() that called it
+    if alignment_matrix[i, j] == 0:
         return [current_path + [(i, j, None)]] # note: current_path.append() returns None :((
     
     # note: recursion yippee :))) was a bit hard to do - never done this type of recursion before
-    else: 
-        paths = []
+    else:
+        paths = [] # list of final paths
             
         for arrow in arrows: # for each arrow
             # creates new path in a separate list
             # each arrow in each recursive call has its own path
             new_path = current_path + [(i, j, arrow)]
             
+            
             # function recursively calls itself, continuing the traceback from new_path
             # until finally this collectively returns a list of all complete paths
             # which is all added to paths
-            if arrow == 'd' and i > 0 and j > 0:
-                paths.extend(single_traceback(i-1, j-1, traceback_matrix, new_path))
-            elif arrow == 'u' and i > 0:
-                paths.extend(single_traceback(i-1, j, traceback_matrix, new_path))
-            elif arrow == 'l' and j > 0:
-                paths.extend(single_traceback(i, j-1, traceback_matrix, new_path))
+            if arrow == 'd':
+                paths.extend(single_traceback(i-1, j-1, alignment_matrix, traceback_matrix, new_path))
+            elif arrow == 'u':
+                paths.extend(single_traceback(i-1, j, alignment_matrix, traceback_matrix, new_path))
+            elif arrow == 'l':
+                paths.extend(single_traceback(i, j-1, alignment_matrix, traceback_matrix, new_path))
         return paths # full list of paths
-        
+    
 def form_alignment(residues1, residues2, unique_final_paths):
     '''
     Uses the list of paths returned by total_traceback() to reconstruct an alignment.
@@ -244,7 +247,7 @@ def deduplicate_alignments(alignments):
     # contains a set of all seen alignments
     seen = set() # note: tuples are weird - can't do a list
     unique_paths = [] # list of unique paths
-
+    
     # for each alignment (pair containing sequence1, sequence2) returned by form_alignment()
     for sequence1, sequence2 in alignments:
         if (sequence1, sequence2) not in seen: # if the alignment is unique (not seen before) 
@@ -258,7 +261,7 @@ def alignment_viewer(alignments):
     the function creates a string that is printed between the two sequences.
     For each position in the alignment, the middle string contains
     - | (for matches)
-    - | (but red) for mismatches
+    - * (for mismatches)
     -   (for gaps)
     Therefore the function provides a better visualisation for the alignment
     '''
@@ -307,11 +310,12 @@ def alignment_plot(alignment_matrix, paths):
             y.append(step[0])
         plt.plot(x, y, 'k')
     plt.show() # shows plot
-    
+
+
         
 def main():
     '''
-    Runs total global alignment program
+    Runs total local alignment program
     '''
     
     # user inputs two sequences
@@ -322,8 +326,8 @@ def main():
     residues1, residues2, alignment_matrix, traceback_matrix = form_matrix(sequence1, sequence2)
     
     # determines the optimal alignment
-    # needleman-wunsch - optimal alignment is the final cell score (in the alignment matrix)
-    optimal_alignment = alignment_matrix[-1, -1]
+    # smith-waterman - optimal alignment is the maximum cell score (in the alignment matrix)
+    optimal_alignment = alignment_matrix.max(axis=None)
     
     # prints the matrices
     print('')
@@ -336,7 +340,7 @@ def main():
     print('')
     
     # runs the traceback - collects list of all optimal paths
-    traceback = total_traceback(traceback_matrix)
+    traceback = total_traceback(alignment_matrix, traceback_matrix)
     
     # translates each path in the traceback list into an alignment
     alignments = form_alignment(residues1, residues2, traceback)
@@ -353,10 +357,10 @@ def main():
         for segment in alignment:
             print(segment)
             print('')
-        
+    
     # plots the alignment matrix and traceback path
     alignment_plot(alignment_matrix, traceback)
-        
+
 
 
 main()
