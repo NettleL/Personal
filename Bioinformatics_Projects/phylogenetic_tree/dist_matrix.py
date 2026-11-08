@@ -67,7 +67,7 @@ def main_dist_matrix(fasta_file):
     
     print("------ DISTANCE MATRIX ------")
     print(dist_matrix)
-    return converted_dist_matrix
+    return converted_dist_matrix, records
 
 
         

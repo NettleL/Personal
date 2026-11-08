@@ -3,9 +3,12 @@ from upgma_global_alignment import *
 import subprocess
 import os
 
+import re
+
 # for ascii tree visualisation
 from Bio import Phylo
 from io import StringIO
+
 
 # TO DO
 # map node ids to names
@@ -31,6 +34,18 @@ def run_upgma(matrix):
             os.remove("upgma.exe")
     
 
+def add_names_to_newick(newick, records):
+    named_newick = newick
+    
+    for index, (name, seq) in records.items():
+        named_newick = re.sub(rf'(?<=[(,]){index}(?=:)', name, named_newick)
+        # magic!!
+        # lookbehind - thing ? before <= the match must be ( or ,
+        # index you're looking for
+        # lookforward - thing ? after match must be :
+        
+    return named_newick
+    
 if __name__ == "__main__":
     fasta = input("Fasta File Path: ")
     print("""
@@ -38,13 +53,14 @@ if __name__ == "__main__":
         ============================== CREATING DISTANCE MATRIX ============================== 
     
     """)
-    matrix = main_dist_matrix(fasta)
+    matrix, records = main_dist_matrix(fasta)
     print("""
         
         ============================== RUNNING UPGMA ============================== 
     
     """)
     newick = run_upgma(matrix)
-    print(newick)
+    named_newick = add_names_to_newick(newick, records)
+    print(named_newick)
     
-    Phylo.draw_ascii(Phylo.read(StringIO(newick), "newick"))
+    Phylo.draw_ascii(Phylo.read(StringIO(named_newick), "newick"))

@@ -395,7 +395,7 @@ void build_newick_recursive(struct tree_node *node, char *newick, int *pos, doub
 
     if (parent_height != IS_ROOT) {
         branch_len = parent_height - node->height;
-        digits_added = sprintf(newick + *pos, "%d:%.2f", node->node_id, branch_len);
+        digits_added = sprintf(newick + *pos, ":%.2f", branch_len);
         *pos += digits_added;
     }
 }
