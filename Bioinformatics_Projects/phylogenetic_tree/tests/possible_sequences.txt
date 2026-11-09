@@ -1,0 +1,9 @@
+NOTE: All FASTA files (excluding test_null) were acquired from UNIPROT Database
+
+[ ] SARS-CoV-2 Variants Spike RBD
+[ ] Coronavirus Family RBDs
+[ ] Cytochrome C
+[y] Insulin
+[ ] COI/COX1 DNA Barcode
+[y] Influenza Hemagglutinin
+[y] Myoglobin

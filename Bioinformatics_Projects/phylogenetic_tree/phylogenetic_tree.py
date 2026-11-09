@@ -1,8 +1,11 @@
 from dist_matrix import *
 from upgma_global_alignment import *
+
+# to run upgma.c
 import subprocess
 import os
 
+# to convert node ids to names in the Newick tree
 import re
 
 # for ascii tree visualisation
@@ -11,7 +14,6 @@ from io import StringIO
 
 
 # TO DO
-# map node ids to names
 # implement error handling!!
 # comment
 
@@ -61,6 +63,7 @@ if __name__ == "__main__":
     """)
     newick = run_upgma(matrix)
     named_newick = add_names_to_newick(newick, records)
+    print("")
     print(named_newick)
-    
+    print("")
     Phylo.draw_ascii(Phylo.read(StringIO(named_newick), "newick"))

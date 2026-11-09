@@ -12,6 +12,10 @@
 // -> MSA!!
 // -> gene sequences??
 
+// TO DO
+// free malloced memory
+// able to work on large sequences
+
 #define IS_ROOT -1
 
 enum Active {
